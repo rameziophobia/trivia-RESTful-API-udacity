@@ -9,7 +9,6 @@ from models import setup_db, Question, Category
 QUESTIONS_PER_PAGE = 10
 
 def create_app(test_config=None):
-  # create and configure the app
   app = Flask(__name__)
   setup_db(app)
   
@@ -17,7 +16,6 @@ def create_app(test_config=None):
 
   @app.after_request
   def after_request(response):
-    # for access control
     response.headers.add('Access-Control-Allow-Headers',
                           'Content-Type,Authorization,true')
     response.headers.add('Access-Control-Allow-Methods',
@@ -50,7 +48,6 @@ def create_app(test_config=None):
     number of total questions, current category, categories. 
     '''
 
-    # get questions 
     questions = Question.query.all()
 
     page = request.args.get('page', 1, type=int)
@@ -59,13 +56,11 @@ def create_app(test_config=None):
     paged_questions = questions[start:end]
     paged_questions = [question.format() for question in paged_questions]
 
-    # get categories
     categories = {cat.id:cat.type for cat in Category.query.all()}
     
     if not categories or not questions:
       abort(404)
 
-    # return data to view
     return jsonify({
         'success': True,
         'questions': paged_questions,
@@ -113,26 +108,16 @@ def create_app(test_config=None):
     difficulty = request_body.get('difficulty')
     category = request_body.get('category')
 
-    # ensure all fields have data
+
     if not question_body or not difficulty or \
       not category or not answer:
       abort(400)
 
     try:
-        # create and insert new question
         question = Question(question=question_body, answer=answer,
                             difficulty=difficulty, category=category)
         question.insert()
 
-        questions = Question.query.all()
-
-        page = request.args.get('page', 1, type=int)
-        start = (page - 1) * QUESTIONS_PER_PAGE
-        end = start + QUESTIONS_PER_PAGE
-        paged_questions = questions[start:end]
-        paged_questions = [question.format() for question in paged_questions]
-
-        # return data to view
         return jsonify({
             'success': True,
             'created_id': question.id,
@@ -151,11 +136,9 @@ def create_app(test_config=None):
     It should return any questions for whom the search term 
     is a substring of the question. 
     '''
-    # query the database using search term
     search_results = Question.query.filter(
         Question.question.ilike(f'%{search_term}%')).all()
 
-    # 404 if no results found
     if not search_results:
         abort(404)
 
@@ -165,7 +148,6 @@ def create_app(test_config=None):
     paged_questions = search_results[start:end]
     paged_questions = [question.format() for question in paged_questions]
 
-    # return results
     return jsonify({
         'success': True,
         'questions': paged_questions,

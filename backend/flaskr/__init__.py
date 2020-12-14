@@ -25,7 +25,7 @@ def create_app(test_config=None):
     return response
 
   @app.route('/categories')
-  def categories():
+  def get_categories():
     '''
     An endpoint to handle GET requests 
     for all available categories.
@@ -42,7 +42,7 @@ def create_app(test_config=None):
 
 
   @app.route('/questions')
-  def questions():
+  def get_questions():
     '''
     Create an endpoint to handle GET requests for questions, 
     including pagination (every 10 questions). 
@@ -91,11 +91,12 @@ def create_app(test_config=None):
 
       return jsonify({
         'success': True,
-        'deleted': id
+        'deleted_id': id
     })
 
-    except expression as identifier:
+    except:
       abort(400)
+
 
   @app.route('/questions', methods=['POST'])
   def add_question():
@@ -134,13 +135,14 @@ def create_app(test_config=None):
         # return data to view
         return jsonify({
             'success': True,
-            'created': question.id,
+            'created_id': question.id,
             'question_created': question.question
         })
 
     except:
         abort(422)
     pass
+
 
   @app.route('/questions/<string:search_term>', methods=['GET'])
   def search_questions(search_term):
@@ -171,15 +173,15 @@ def create_app(test_config=None):
     })
 
 
-  @app.route('/categories/<int:id>/questions')
-  def questions_by_category(id):
+  @app.route('/categories/<string:id>/questions')
+  def get_questions_by_category(id):
     '''
     GET endpoint to get questions based on category. 
     '''
 
     try:
       questions = Question.query.filter_by(category=id).all()
-
+      
       if not questions:
         abort(404)
 
@@ -196,9 +198,8 @@ def create_app(test_config=None):
         'current_category': questions[start].category
     })
 
-    except expression as identifier:
+    except:
       abort(400)
-
 
 
   @app.route('/quizzes', methods=['POST'])
@@ -223,6 +224,9 @@ def create_app(test_config=None):
         questions = Question.query.all()
     else:
         questions = Question.query.filter_by(category=category['id']).all()
+
+    if not questions:
+      abort(422)
 
     if len(previous_questions) == len(questions):
       return jsonify({

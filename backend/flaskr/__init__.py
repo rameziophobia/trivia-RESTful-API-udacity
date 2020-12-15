@@ -1,8 +1,7 @@
-import os
-from flask import Flask, request, abort, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
 import random
+
+from flask import Flask, request, abort, jsonify
+from flask_cors import CORS
 
 from models import setup_db, Question, Category
 
@@ -48,13 +47,17 @@ def create_app(test_config=None):
         number of total questions, current category, categories.
         """
 
-        questions = Question.query.all()
+        items_limit = request.args.get('limit', 10, type=int)
+        selected_page = request.args.get('page', 1, type=int)
+        current_index = selected_page - 1
 
-        page = request.args.get('page', 1, type=int)
-        start = (page - 1) * QUESTIONS_PER_PAGE
-        end = start + QUESTIONS_PER_PAGE
-        paged_questions = questions[start:end]
-        paged_questions = [question.format() for question in paged_questions]
+        questions = Question.query \
+            .order_by(Question.id) \
+            .limit(items_limit) \
+            .offset(current_index * items_limit) \
+            .all()
+
+        paged_questions = [question.format() for question in questions]
 
         categories = {cat.id: cat.type for cat in Category.query.all()}
 
@@ -64,8 +67,8 @@ def create_app(test_config=None):
         return jsonify({
             'success': True,
             'questions': paged_questions,
-            'total_questions': len(questions),
-            'current category': questions[start].category,
+            'total_questions': len(Question.query.all()),
+            'current category': questions[0].category,
             'categories': categories
         })
 
@@ -132,22 +135,31 @@ def create_app(test_config=None):
         It should return any questions for whom the search term
         is a substring of the question.
         """
-        search_results = Question.query.filter(
-            Question.question.ilike(f'%{search_term}%')).all()
+
+        items_limit = request.args.get('limit', 10, type=int)
+        selected_page = request.args.get('page', 1, type=int)
+        current_index = selected_page - 1
+
+        search_results_count = Question.query \
+            .filter(Question.question.ilike(f'%{search_term}%')) \
+            .count()
+
+        search_results = Question.query \
+            .filter(Question.question.ilike(f'%{search_term}%')) \
+            .order_by(Question.id) \
+            .limit(items_limit) \
+            .offset(current_index * items_limit) \
+            .all()
+
+        paged_questions = [question.format() for question in search_results]
 
         if not search_results:
             abort(404)
 
-        page = request.args.get('page', 1, type=int)
-        start = (page - 1) * QUESTIONS_PER_PAGE
-        end = start + QUESTIONS_PER_PAGE
-        paged_questions = search_results[start:end]
-        paged_questions = [question.format() for question in paged_questions]
-
         return jsonify({
             'success': True,
             'questions': paged_questions,
-            'total_questions': len(search_results)
+            'total_questions': search_results_count
         })
 
     @app.route('/categories/<string:id>/questions')
@@ -156,28 +168,31 @@ def create_app(test_config=None):
         GET endpoint to get questions based on category.
         """
 
-        try:
-            questions = Question.query.filter_by(category=id).all()
+        # try:
+        items_limit = request.args.get('limit', 10, type=int)
+        selected_page = request.args.get('page', 1, type=int)
+        current_index = selected_page - 1
 
-            if not questions:
-                abort(404)
+        questions = Question.query \
+            .order_by(Question.id) \
+            .filter_by(category=id) \
+            .limit(items_limit) \
+            .offset(current_index * items_limit) \
+            .all()
 
-            page = request.args.get('page', 1, type=int)
-            start = (page - 1) * QUESTIONS_PER_PAGE
-            end = start + QUESTIONS_PER_PAGE
-            paged_questions = questions[start:end]
-            paged_questions = \
-                [question.format() for question in paged_questions]
+        formatted_questions = [question.format() for question in questions]
 
-            return jsonify({
-                'success': True,
-                'questions': paged_questions,
-                'total_questions': len(questions),
-                'current_category': questions[start].category
-            })
+        if not questions:
+            abort(404)
 
-        except:
-            abort(400)
+        return jsonify({'success': True,
+                        'questions': formatted_questions,
+                        'total_questions': len(questions),
+                        'current_category': questions[0].category
+                        })
+
+        # except :
+        #     abort(400)
 
     @app.route('/quizzes', methods=['POST'])
     def quizzes():
